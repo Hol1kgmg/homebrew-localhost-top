@@ -14,7 +14,8 @@ vimキーバインドで操作する、localhost上のLISTENプロセス管理TU
 ## インストール
 
 ```bash
-brew install --cask Hol1kgmg/localhost-top/localhost-top
+brew tap Hol1kgmg/localhost-top
+brew install --cask localhost-top
 ```
 
 ### ソースからビルド
