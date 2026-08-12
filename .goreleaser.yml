@@ -1,0 +1,53 @@
+version: 2
+
+project_name: localhost-top
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: localhost-top
+    main: .
+    binary: localhost-top
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: localhost-top
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+homebrew_casks:
+  - name: localhost-top
+    repository:
+      owner: Hol1kgmg
+      name: homebrew-localhost-top
+    directory: Casks
+    homepage: "https://github.com/Hol1kgmg/homebrew-localhost-top"
+    description: "vimキーバインドでlocalhostのLISTENプロセスを一覧・kill・操作するTUIツール"
+    license: "MIT"
+    commit_author:
+      name: goreleaserbot
+      email: goreleaser@localhost
+    binaries:
+      - localhost-top

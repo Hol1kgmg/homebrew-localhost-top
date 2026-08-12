@@ -1,6 +1,8 @@
 [tools]
 gitleaks = "latest"
 lefthook = "latest"
+go = "latest"
+goreleaser = "latest"
 
 [tasks.setup]
 description = "Run full environment setup"
