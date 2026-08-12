@@ -42,7 +42,6 @@ homebrew_casks:
     repository:
       owner: Hol1kgmg
       name: homebrew-localhost-top
-      token: "{{ .Env.GIITHUB_TOKEN }}"
     directory: Casks
     homepage: "https://github.com/Hol1kgmg/homebrew-localhost-top"
     description: "vimキーバインドでlocalhostのLISTENプロセスを一覧・kill・操作するTUIツール"

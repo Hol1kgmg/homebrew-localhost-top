@@ -86,10 +86,11 @@ go run .
 
 ### リリース
 
+`v*.*.*`形式のタグをpushすると、GitHub Actions（`.github/workflows/release.yml`）が自動でgoreleaserを実行します。
+
 ```bash
 git tag vX.X.X
 git push origin vX.X.X
-goreleaser release --clean
 ```
 
 同一リポジトリの`Casks/`ディレクトリにHomebrew Caskが自動生成・コミットされます。
