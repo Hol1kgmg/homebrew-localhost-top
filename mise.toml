@@ -11,7 +11,7 @@ run = [
   "lefthook install",
 ]
 
-[tasks.run]
+[tasks.dev]
 description = "Run app"
 run = ["go run ."]
 

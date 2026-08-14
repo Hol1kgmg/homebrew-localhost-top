@@ -21,6 +21,7 @@ const (
 	modeConfirmKill
 	modeDetail
 	modeHelp
+	modeLANGuide
 )
 
 type sortKey int
@@ -66,14 +67,17 @@ type Model struct {
 	pendingAll     bool
 	pendingPIDs    []int
 
-	detailContent string
+	detailContent   string
+	lanGuideContent string
 
-	status string
-	err    error
+	status      string
+	statusToken int
+	err         error
 
 	lastKey string
 
 	width, height int
+	cmdColWidth   int
 
 	version         string
 	updateAvailable bool
@@ -85,7 +89,7 @@ const (
 	pidColWidth   = 8
 	userColWidth  = 12
 	portColWidth  = 8
-	scopeColWidth = 10
+	scopeColWidth = 14
 	minCmdWidth   = 10
 )
 
@@ -111,11 +115,25 @@ func (m *Model) resizeColumns(tableWidth int) {
 	if cmdWidth < minCmdWidth {
 		cmdWidth = minCmdWidth
 	}
+	m.cmdColWidth = cmdWidth
+	m.refreshColumnTitles()
+}
+
+// columnTitle は現在のソート対象列にインジケーターを付与する。
+func (m *Model) columnTitle(base string, key sortKey) string {
+	if m.sort == key {
+		return base + " ▲"
+	}
+	return base
+}
+
+// refreshColumnTitles はソート状態を反映して列見出しを再構築する（幅は変えない）。
+func (m *Model) refreshColumnTitles() {
 	m.table.SetColumns([]table.Column{
-		{Title: "COMMAND", Width: cmdWidth},
-		{Title: "PID", Width: pidColWidth},
-		{Title: "USER", Width: userColWidth},
-		{Title: "PORT", Width: portColWidth},
+		{Title: "COMMAND", Width: m.cmdColWidth},
+		{Title: m.columnTitle("PID", sortByPID), Width: pidColWidth},
+		{Title: m.columnTitle("USER", sortByUser), Width: userColWidth},
+		{Title: m.columnTitle("PORT", sortByPort), Width: portColWidth},
 		{Title: "SCOPE", Width: scopeColWidth},
 	})
 }
@@ -139,6 +157,30 @@ type tickMsg time.Time
 type processListMsg struct {
 	processes []process.Process
 	err       error
+}
+
+// statusDisplayDuration はステータスメッセージの最低表示時間。
+// これより早く処理が終わっても、この時間が経過するまでは表示し続ける。
+const statusDisplayDuration = 1500 * time.Millisecond
+
+type statusClearMsg struct {
+	token int
+}
+
+// clearStatusAfter は指定時間後にstatusClearMsgを発行する。
+// tokenが発行時点のm.statusTokenと一致する場合のみクリアすることで、
+// その間に新しいステータスが設定された場合に誤って消してしまうのを防ぐ。
+func clearStatusAfter(token int, d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg {
+		return statusClearMsg{token: token}
+	})
+}
+
+// setStatus はステータスメッセージを設定し、一定時間後に自動的にクリアするコマンドを返す。
+func (m *Model) setStatus(s string) tea.Cmd {
+	m.statusToken++
+	m.status = s
+	return clearStatusAfter(m.statusToken, statusDisplayDuration)
 }
 
 type killResultMsg struct {

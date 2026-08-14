@@ -14,9 +14,9 @@ const (
 func (s Scope) String() string {
 	switch s {
 	case ScopeAll:
-		return "0.0.0.0"
+		return "🌐 LAN公開"
 	default:
-		return "127.0.0.1"
+		return "🔒 ローカル限定"
 	}
 }
 

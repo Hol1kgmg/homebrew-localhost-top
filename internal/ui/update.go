@@ -61,12 +61,8 @@ func killAllCmd(pids []int, force bool) tea.Cmd {
 }
 
 // lanLinkStatus はLANアクセス用リンクを生成しクリップボードへコピーする。
-// 0.0.0.0限定bind以外のプロセスは実際にはLANから到達できないため警告のみ返す。
+// 呼び出し側でScopeAllであることを確認済みの前提。
 func lanLinkStatus(p process.Process) string {
-	if p.Scope != process.ScopeAll {
-		return fmt.Sprintf("PID %d (%s) は127.0.0.1限定bindのためLANからアクセスできません（--host 0.0.0.0等での起動が必要）", p.PID, p.Command)
-	}
-
 	ip, err := network.LocalIP()
 	if err != nil {
 		return fmt.Sprintf("LAN側IPアドレスの取得に失敗しました: %v", err)
@@ -90,8 +86,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		// タイトル行(1) + パネル境界線(2) + パネルタイトル行(1) + フッター(1) 分を差し引く。
-		m.table.SetHeight(msg.Height - 5)
+		// テーブルの高さはフッターの実行数（ステータス/エラーの有無で変動）に応じてView()側で都度計算する。
 		m.resizeColumns(msg.Width - 4) // パネルのボーダー・パディング分を差し引く
 		m.table.SetWidth(msg.Width - 4)
 		return m, nil
@@ -107,6 +102,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = nil
 		m.all = msg.processes
 		m.applyFilterAndSort()
+		return m, nil
+
+	case statusClearMsg:
+		if msg.token == m.statusToken {
+			m.status = ""
+		}
 		return m, nil
 
 	case killResultMsg:
@@ -170,95 +171,99 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailKey(msg)
 	case modeHelp:
 		return m.handleHelpKey(msg)
+	case modeLANGuide:
+		return m.handleLANGuideKey(msg)
 	default:
 		return m.handleNormalKey(msg)
 	}
 }
 
+// startKillConfirm はK/Xキー共通のkill確認ポップアップ準備処理。
+func (m *Model) startKillConfirm(p process.Process, force bool) {
+	m.pendingPID = p.PID
+	m.pendingForce = force
+	m.pendingCommand = p.Command
+	m.pendingPort = p.Port
+	m.pendingAll = false
+	m.mode = modeConfirmKill
+}
+
 func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	switch {
-	case key == "q":
+	prevKey := m.lastKey
+	m.lastKey = ""
+
+	switch key {
+	case "q":
 		return m, tea.Quit
 
-	case key == "j" || key == "down":
+	case "esc":
+		if m.lastQuery != "" {
+			m.searchInput = ""
+			m.lastQuery = ""
+			m.applyFilterAndSort()
+			m.status = "検索フィルターを解除しました"
+		}
+		return m, nil
+
+	case "j", "down":
 		m.table.MoveDown(1)
-		m.lastKey = ""
 		return m, nil
 
-	case key == "k" || key == "up":
+	case "k", "up":
 		m.table.MoveUp(1)
-		m.lastKey = ""
 		return m, nil
 
-	case key == "g":
-		if m.lastKey == "g" {
+	case "g":
+		if prevKey == "g" {
 			m.table.GotoTop()
-			m.lastKey = ""
 		} else {
 			m.lastKey = "g"
 		}
 		return m, nil
 
-	case key == "G":
+	case "G":
 		m.table.GotoBottom()
-		m.lastKey = ""
 		return m, nil
 
-	case key == "/":
+	case "/":
 		m.mode = modeSearch
 		m.searchInput = ""
-		m.lastKey = ""
 		return m, nil
 
-	case key == "r":
-		m.status = "再読み込み中..."
-		m.lastKey = ""
-		return m, fetchProcesses
+	case "r":
+		clearCmd := m.setStatus("再読み込み中...")
+		return m, tea.Batch(fetchProcesses, clearCmd)
 
-	case key == "s":
+	case "s":
 		m.sort = (m.sort + 1) % 3
+		m.refreshColumnTitles()
 		m.applyFilterAndSort()
 		m.status = fmt.Sprintf("ソート: %s", m.sort.String())
-		m.lastKey = ""
 		return m, nil
 
-	case key == "K":
+	case "K":
 		if p, ok := m.selected(); ok {
-			m.pendingPID = p.PID
-			m.pendingForce = false
-			m.pendingCommand = p.Command
-			m.pendingPort = p.Port
-			m.pendingAll = false
-			m.mode = modeConfirmKill
+			m.startKillConfirm(p, false)
 		}
-		m.lastKey = ""
 		return m, nil
 
-	case key == "X":
+	case "X":
 		if p, ok := m.selected(); ok {
-			m.pendingPID = p.PID
-			m.pendingForce = true
-			m.pendingCommand = p.Command
-			m.pendingPort = p.Port
-			m.pendingAll = false
-			m.mode = modeConfirmKill
+			m.startKillConfirm(p, true)
 		}
-		m.lastKey = ""
 		return m, nil
 
-	case key == "enter" || key == "l":
+	case "enter", "l":
 		if p, ok := m.selected(); ok {
 			m.mode = modeDetail
 			m.detailContent = "読み込み中..."
-			m.lastKey = ""
 			return m, detailCmd(p.PID)
 		}
-		m.lastKey = ""
 		return m, nil
 
-	case key == "o":
+	case "o":
 		if p, ok := m.selected(); ok {
 			if err := open.Browser(p.Port); err != nil {
 				m.status = fmt.Sprintf("ブラウザで開けませんでした: %v", err)
@@ -266,29 +271,29 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.status = fmt.Sprintf("http://localhost:%d を開きました", p.Port)
 			}
 		}
-		m.lastKey = ""
 		return m, nil
 
-	case key == "L":
+	case "L":
 		if p, ok := m.selected(); ok {
-			m.status = lanLinkStatus(p)
+			if p.Scope != process.ScopeAll {
+				m.lanGuideContent = lanGuideContent(p.PID, p.Command)
+				m.mode = modeLANGuide
+			} else {
+				m.status = lanLinkStatus(p)
+			}
 		}
-		m.lastKey = ""
 		return m, nil
 
-	case key == ":":
+	case ":":
 		m.mode = modeCommand
 		m.cmdInput = ""
-		m.lastKey = ""
 		return m, nil
 
-	case key == "?":
+	case "?":
 		m.mode = modeHelp
-		m.lastKey = ""
 		return m, nil
 	}
 
-	m.lastKey = ""
 	return m, nil
 }
 
@@ -301,6 +306,9 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "esc":
 		m.mode = modeNormal
+		m.searchInput = ""
+		m.lastQuery = ""
+		m.applyFilterAndSort()
 		return m, nil
 	case "backspace":
 		if len(m.searchInput) > 0 {
@@ -391,6 +399,15 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q", "?":
+		m.mode = modeNormal
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleLANGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q":
 		m.mode = modeNormal
 		return m, nil
 	}
