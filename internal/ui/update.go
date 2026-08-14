@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/kill"
+	"github.com/Hol1kgmg/homebrew-localhost-top/internal/network"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/open"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/process"
 )
@@ -39,6 +40,25 @@ func killAllCmd(pids []int, force bool) tea.Cmd {
 		}
 		return killAllResultMsg{total: len(pids), failed: failed}
 	}
+}
+
+// lanLinkStatus はLANアクセス用リンクを生成しクリップボードへコピーする。
+// 0.0.0.0限定bind以外のプロセスは実際にはLANから到達できないため警告のみ返す。
+func lanLinkStatus(p process.Process) string {
+	if p.Scope != process.ScopeAll {
+		return fmt.Sprintf("PID %d (%s) は127.0.0.1限定bindのためLANからアクセスできません（--host 0.0.0.0等での起動が必要）", p.PID, p.Command)
+	}
+
+	ip, err := network.LocalIP()
+	if err != nil {
+		return fmt.Sprintf("LAN側IPアドレスの取得に失敗しました: %v", err)
+	}
+
+	link := fmt.Sprintf("http://%s:%d", ip, p.Port)
+	if err := open.Copy(link); err != nil {
+		return fmt.Sprintf("%s （クリップボードへのコピーに失敗: %v）", link, err)
+	}
+	return fmt.Sprintf("%s をクリップボードにコピーしました", link)
 }
 
 func detailCmd(pid int) tea.Cmd {
@@ -211,6 +231,13 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.status = fmt.Sprintf("http://localhost:%d を開きました", p.Port)
 			}
+		}
+		m.lastKey = ""
+		return m, nil
+
+	case key == "L":
+		if p, ok := m.selected(); ok {
+			m.status = lanLinkStatus(p)
 		}
 		m.lastKey = ""
 		return m, nil

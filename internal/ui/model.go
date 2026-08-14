@@ -76,12 +76,13 @@ type Model struct {
 	width, height int
 }
 
-// 固定幅のPID/USER/PORT列を除いた残りをCOMMAND列に割り当てる。
+// 固定幅のPID/USER/PORT/SCOPE列を除いた残りをCOMMAND列に割り当てる。
 const (
-	pidColWidth  = 8
-	userColWidth = 12
-	portColWidth = 8
-	minCmdWidth  = 10
+	pidColWidth   = 8
+	userColWidth  = 12
+	portColWidth  = 8
+	scopeColWidth = 10
+	minCmdWidth   = 10
 )
 
 func New() Model {
@@ -101,7 +102,7 @@ func New() Model {
 
 // resizeColumns はターミナル幅に合わせてCOMMAND列の幅を再計算する。
 func (m *Model) resizeColumns(tableWidth int) {
-	cmdWidth := tableWidth - pidColWidth - userColWidth - portColWidth - 8 // 列間の区切り分
+	cmdWidth := tableWidth - pidColWidth - userColWidth - portColWidth - scopeColWidth - 10 // 列間の区切り分
 	if cmdWidth < minCmdWidth {
 		cmdWidth = minCmdWidth
 	}
@@ -110,6 +111,7 @@ func (m *Model) resizeColumns(tableWidth int) {
 		{Title: "PID", Width: pidColWidth},
 		{Title: "USER", Width: userColWidth},
 		{Title: "PORT", Width: portColWidth},
+		{Title: "SCOPE", Width: scopeColWidth},
 	})
 }
 
@@ -173,7 +175,7 @@ func (m *Model) applyFilterAndSort() {
 
 	rows := make([]table.Row, len(sorted))
 	for i, p := range sorted {
-		rows[i] = table.Row{p.Command, strconv.Itoa(p.PID), p.User, strconv.Itoa(p.Port)}
+		rows[i] = table.Row{p.Command, strconv.Itoa(p.PID), p.User, strconv.Itoa(p.Port), p.Scope.String()}
 	}
 	m.table.SetRows(rows)
 }

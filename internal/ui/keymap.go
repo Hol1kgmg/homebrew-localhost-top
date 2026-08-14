@@ -15,6 +15,7 @@ type keyMap struct {
 	Reload  key.Binding
 	Detail  key.Binding
 	Open    key.Binding
+	LANLink key.Binding
 	Sort    key.Binding
 	Command key.Binding
 	Quit    key.Binding
@@ -36,6 +37,7 @@ var keys = keyMap{
 	Reload:  key.NewBinding(key.WithKeys("r")),
 	Detail:  key.NewBinding(key.WithKeys("enter", "l")),
 	Open:    key.NewBinding(key.WithKeys("o")),
+	LANLink: key.NewBinding(key.WithKeys("L")),
 	Sort:    key.NewBinding(key.WithKeys("s")),
 	Command: key.NewBinding(key.WithKeys(":")),
 	Quit:    key.NewBinding(key.WithKeys("q")),

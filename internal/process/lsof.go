@@ -9,12 +9,20 @@ import (
 	"strings"
 )
 
-// localhostAddresses はlocalhost限定表示の対象とみなすアドレス表記の集合。
-var localhostAddresses = map[string]bool{
+// loopbackAddresses はloopback限定bindとみなすアドレス表記の集合。
+var loopbackAddresses = map[string]bool{
 	"127.0.0.1": true,
 	"localhost": true,
 	"[::1]":     true,
 	"::1":       true,
+}
+
+// allInterfaceAddresses は全インターフェースbind（LAN到達可能）とみなすアドレス表記の集合。
+var allInterfaceAddresses = map[string]bool{
+	"*":       true,
+	"0.0.0.0": true,
+	"[::]":    true,
+	"::":      true,
 }
 
 // List は現在localhost上でLISTENしているTCPプロセスの一覧を取得する。
@@ -86,7 +94,13 @@ func parse(output []byte) ([]Process, error) {
 		address := addrPort[:idx]
 		portStr := addrPort[idx+1:]
 
-		if !localhostAddresses[address] {
+		var scope Scope
+		switch {
+		case loopbackAddresses[address]:
+			scope = ScopeLoopback
+		case allInterfaceAddresses[address]:
+			scope = ScopeAll
+		default:
 			continue
 		}
 
@@ -102,6 +116,7 @@ func parse(output []byte) ([]Process, error) {
 			Address: address,
 			Port:    port,
 			Proto:   "TCP",
+			Scope:   scope,
 		})
 	}
 
