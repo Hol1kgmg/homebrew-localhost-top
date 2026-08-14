@@ -11,6 +11,21 @@ run = [
   "lefthook install",
 ]
 
+[tasks.run]
+description = "Run app"
+run = ["go run ."]
+
+[tasks.versions]
+description = "Show release version history (git tags)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+git for-each-ref refs/tags \
+  --sort=-v:refname \
+  --format='%(refname:short)  %(creatordate:short)  %(subject)'
+'''
+
 [tasks.release]
 description = "Tag a release (vX.X.X) and push it to trigger the GitHub Actions release workflow"
 run = '''
