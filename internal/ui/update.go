@@ -15,15 +15,29 @@ type detailMsg struct {
 	err     error
 }
 
+// sendSignal はforceに応じてSIGTERM/SIGKILLをpidへ送る。
+func sendSignal(pid int, force bool) error {
+	if force {
+		return kill.Force(pid)
+	}
+	return kill.Term(pid)
+}
+
 func killCmd(pid int, force bool) tea.Cmd {
 	return func() tea.Msg {
-		var err error
-		if force {
-			err = kill.Force(pid)
-		} else {
-			err = kill.Term(pid)
+		return killResultMsg{pid: pid, err: sendSignal(pid, force)}
+	}
+}
+
+func killAllCmd(pids []int, force bool) tea.Cmd {
+	return func() tea.Msg {
+		failed := 0
+		for _, pid := range pids {
+			if err := sendSignal(pid, force); err != nil {
+				failed++
+			}
 		}
-		return killResultMsg{pid: pid, err: err}
+		return killAllResultMsg{total: len(pids), failed: failed}
 	}
 }
 
@@ -65,6 +79,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, fetchProcesses
 
+	case killAllResultMsg:
+		succeeded := msg.total - msg.failed
+		if msg.failed > 0 {
+			m.status = fmt.Sprintf("%d件中%d件を終了しました（%d件失敗）", msg.total, succeeded, msg.failed)
+		} else {
+			m.status = fmt.Sprintf("%d件を終了しました", succeeded)
+		}
+		return m, fetchProcesses
+
 	case detailMsg:
 		if msg.err != nil {
 			m.status = fmt.Sprintf("詳細取得失敗: %v", msg.err)
@@ -91,6 +114,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKey(msg)
 	case modeDetail:
 		return m.handleDetailKey(msg)
+	case modeHelp:
+		return m.handleHelpKey(msg)
 	default:
 		return m.handleNormalKey(msg)
 	}
@@ -149,6 +174,9 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if p, ok := m.selected(); ok {
 			m.pendingPID = p.PID
 			m.pendingForce = false
+			m.pendingCommand = p.Command
+			m.pendingPort = p.Port
+			m.pendingAll = false
 			m.mode = modeConfirmKill
 		}
 		m.lastKey = ""
@@ -158,6 +186,9 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if p, ok := m.selected(); ok {
 			m.pendingPID = p.PID
 			m.pendingForce = true
+			m.pendingCommand = p.Command
+			m.pendingPort = p.Port
+			m.pendingAll = false
 			m.mode = modeConfirmKill
 		}
 		m.lastKey = ""
@@ -187,6 +218,11 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key == ":":
 		m.mode = modeCommand
 		m.cmdInput = ""
+		m.lastKey = ""
+		return m, nil
+
+	case key == "?":
+		m.mode = modeHelp
 		m.lastKey = ""
 		return m, nil
 	}
@@ -223,8 +259,23 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		cmd := m.cmdInput
 		m.mode = modeNormal
-		if cmd == "q" {
+		switch cmd {
+		case "q":
 			return m, tea.Quit
+		case "killall", "killall!":
+			if len(m.visible) == 0 {
+				m.status = "killするプロセスがありません"
+				return m, nil
+			}
+			pids := make([]int, len(m.visible))
+			for i, p := range m.visible {
+				pids[i] = p.PID
+			}
+			m.pendingAll = true
+			m.pendingForce = cmd == "killall!"
+			m.pendingPIDs = pids
+			m.mode = modeConfirmKill
+			return m, nil
 		}
 		m.status = fmt.Sprintf("不明なコマンド: %s", cmd)
 		return m, nil
@@ -248,6 +299,9 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y":
 		m.mode = modeNormal
+		if m.pendingAll {
+			return m, killAllCmd(m.pendingPIDs, m.pendingForce)
+		}
 		return m, killCmd(m.pendingPID, m.pendingForce)
 	case "n", "esc":
 		m.mode = modeNormal
@@ -260,6 +314,15 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
+		m.mode = modeNormal
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q", "?":
 		m.mode = modeNormal
 		return m, nil
 	}

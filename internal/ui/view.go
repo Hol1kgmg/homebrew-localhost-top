@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -39,11 +41,6 @@ var (
 
 	statusOKStyle = lipgloss.NewStyle().Foreground(colorGreen)
 	errorStyle    = lipgloss.NewStyle().Foreground(colorRed).Bold(true)
-	confirmStyle  = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(colorWhite).
-			Background(colorRed).
-			Padding(0, 1)
 
 	inputPromptStyle = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
 
@@ -51,6 +48,21 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorCyan).
 			Padding(1, 2)
+
+	confirmPopupStyle = lipgloss.NewStyle().
+				Border(lipgloss.ThickBorder()).
+				BorderForeground(colorRed).
+				Padding(1, 3)
+
+	confirmTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorWhite).
+				Background(colorRed).
+				Padding(0, 1)
+
+	confirmLabelStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(colorGray)
 )
 
 func tableStyles() table.Styles {
@@ -80,6 +92,10 @@ func (m Model) View() string {
 			panelTitleStyle.Render("プロセス詳細") + "\n\n" + m.detailContent,
 		)
 		return box + "\n" + descStyle.Render("esc/q で閉じる")
+	case modeConfirmKill:
+		return m.renderConfirmPopup()
+	case modeHelp:
+		return m.renderHelpPopup()
 	}
 
 	title := titleBarStyle.Render("● localhost-top") + "  " +
@@ -91,9 +107,6 @@ func (m Model) View() string {
 	case modeSearch:
 		borderColor = colorCyan
 		panelTitle = "Processes (search)"
-	case modeConfirmKill:
-		borderColor = colorRed
-		panelTitle = "Processes (confirm)"
 	}
 
 	panelStyle := lipgloss.NewStyle().
@@ -123,12 +136,6 @@ func (m Model) renderBottom() string {
 		return inputPromptStyle.Render("/") + m.searchInput
 	case modeCommand:
 		return inputPromptStyle.Render(":") + m.cmdInput
-	case modeConfirmKill:
-		sig := "SIGTERM"
-		if m.pendingForce {
-			sig = "SIGKILL"
-		}
-		return confirmStyle.Render(fmt.Sprintf(" PID %d に%sを送信しますか？ (y/n) ", m.pendingPID, sig))
 	}
 
 	hints := strings.Join([]string{
@@ -142,6 +149,7 @@ func (m Model) renderBottom() string {
 		hint("r", "reload"),
 		hint(":", "cmd"),
 		hint("q", "quit"),
+		hint("?", "help"),
 	}, "  ")
 
 	lines := []string{hints}
@@ -152,4 +160,74 @@ func (m Model) renderBottom() string {
 		lines = append([]string{errorStyle.Render(fmt.Sprintf("エラー: %v", m.err))}, lines...)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// renderConfirmPopup はkill確認を画面中央のポップアップウィンドウとして描画する。
+func (m Model) renderConfirmPopup() string {
+	sig := "SIGTERM"
+	if m.pendingForce {
+		sig = "SIGKILL"
+	}
+
+	var lines []string
+	if m.pendingAll {
+		lines = []string{
+			confirmTitleStyle.Render(" ⚠ 全プロセスKill確認 "),
+			"",
+			confirmLabelStyle.Render("対象  ") + "  " + fmt.Sprintf("%d件", len(m.pendingPIDs)),
+			confirmLabelStyle.Render("SIGNAL") + "  " + errorStyle.Render(sig),
+			"",
+			descStyle.Render("y") + " で実行 / " + descStyle.Render("n, esc") + " でキャンセル",
+		}
+	} else {
+		lines = []string{
+			confirmTitleStyle.Render(" ⚠ Kill確認 "),
+			"",
+			confirmLabelStyle.Render("COMMAND") + "  " + m.pendingCommand,
+			confirmLabelStyle.Render("PID    ") + "  " + strconv.Itoa(m.pendingPID),
+			confirmLabelStyle.Render("PORT   ") + "  " + strconv.Itoa(m.pendingPort),
+			confirmLabelStyle.Render("SIGNAL ") + "  " + errorStyle.Render(sig),
+			"",
+			descStyle.Render("y") + " で実行 / " + descStyle.Render("n, esc") + " でキャンセル",
+		}
+	}
+
+	popup := confirmPopupStyle.Render(strings.Join(lines, "\n"))
+
+	if m.width > 0 && m.height > 0 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, popup)
+	}
+	return popup
+}
+
+// renderHelpPopup はキーバインド・コマンド一覧を画面中央のポップアップとして描画する。
+func (m Model) renderHelpPopup() string {
+	row := func(kb key.Binding, desc string) string {
+		return hint(strings.Join(kb.Keys(), "/"), desc)
+	}
+
+	lines := []string{
+		panelTitleStyle.Render("ヘルプ"),
+		"",
+		row(keys.Down, "下移動") + "    " + row(keys.Up, "上移動"),
+		row(keys.Top, "先頭へジャンプ") + "  " + row(keys.Bottom, "末尾へジャンプ"),
+		row(keys.Search, "検索モード") + "  " + row(keys.Next, "次の検索結果") + "  " + row(keys.Prev, "前の検索結果"),
+		row(keys.Kill, "kill (SIGTERM)") + "  " + row(keys.Force, "強制kill (SIGKILL)"),
+		row(keys.Detail, "詳細表示") + "  " + row(keys.Open, "ブラウザで開く"),
+		row(keys.Sort, "ソート切替") + "  " + row(keys.Reload, "再読み込み"),
+		row(keys.Command, "コマンドモード") + "  " + row(keys.Quit, "終了"),
+		"",
+		descStyle.Render("コマンド（:入力後）:"),
+		hint(":killall", "表示中の全プロセスをkill (SIGTERM)"),
+		hint(":killall!", "表示中の全プロセスを強制kill (SIGKILL)"),
+		hint(":q", "終了"),
+		"",
+		descStyle.Render("esc / q / ? で閉じる"),
+	}
+
+	box := popupStyle.Render(strings.Join(lines, "\n"))
+	if m.width > 0 && m.height > 0 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+	}
+	return box
 }

@@ -20,6 +20,7 @@ const (
 	modeCommand
 	modeConfirmKill
 	modeDetail
+	modeHelp
 )
 
 type sortKey int
@@ -58,8 +59,12 @@ type Model struct {
 
 	cmdInput string
 
-	pendingPID   int
-	pendingForce bool
+	pendingPID     int
+	pendingForce   bool
+	pendingCommand string
+	pendingPort    int
+	pendingAll     bool
+	pendingPIDs    []int
 
 	detailContent string
 
@@ -128,6 +133,11 @@ type processListMsg struct {
 type killResultMsg struct {
 	pid int
 	err error
+}
+
+type killAllResultMsg struct {
+	total  int
+	failed int
 }
 
 func fetchProcesses() tea.Msg {
