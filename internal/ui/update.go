@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -9,11 +11,27 @@ import (
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/network"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/open"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/process"
+	"github.com/Hol1kgmg/homebrew-localhost-top/internal/update"
 )
 
 type detailMsg struct {
 	content string
 	err     error
+}
+
+type updateCheckMsg struct {
+	info update.Info
+	err  error
+}
+
+// checkUpdateCmd はGitHub Releasesの最新バージョンをチェックする。
+func checkUpdateCmd(version string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		info, err := update.Check(ctx, version)
+		return updateCheckMsg{info: info, err: err}
+	}
 }
 
 // sendSignal はforceに応じてSIGTERM/SIGKILLをpidへ送る。
@@ -115,6 +133,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.detailContent = msg.content
+		return m, nil
+
+	case updateCheckMsg:
+		if msg.err != nil {
+			if m.status == "アップデートを確認中..." {
+				m.status = fmt.Sprintf("アップデート確認に失敗しました: %v", msg.err)
+			}
+			return m, nil
+		}
+		if msg.info.Available {
+			m.updateAvailable = true
+			m.latestVersion = msg.info.Latest
+			m.status = fmt.Sprintf("新しいバージョン %s が利用可能です", msg.info.Latest)
+		} else if m.status == "アップデートを確認中..." {
+			m.status = "最新バージョンです"
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -303,6 +337,13 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pendingPIDs = pids
 			m.mode = modeConfirmKill
 			return m, nil
+		case "update":
+			if m.version == "dev" {
+				m.status = "開発ビルドのためアップデート確認をスキップしました"
+				return m, nil
+			}
+			m.status = "アップデートを確認中..."
+			return m, checkUpdateCmd(m.version)
 		}
 		m.status = fmt.Sprintf("不明なコマンド: %s", cmd)
 		return m, nil

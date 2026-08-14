@@ -74,6 +74,10 @@ type Model struct {
 	lastKey string
 
 	width, height int
+
+	version         string
+	updateAvailable bool
+	latestVersion   string
 }
 
 // 固定幅のPID/USER/PORT/SCOPE列を除いた残りをCOMMAND列に割り当てる。
@@ -85,16 +89,17 @@ const (
 	minCmdWidth   = 10
 )
 
-func New() Model {
+func New(version string) Model {
 	t := table.New(
 		table.WithFocused(true),
 	)
 	t.SetStyles(tableStyles())
 
 	m := Model{
-		table: t,
-		mode:  modeNormal,
-		sort:  sortByPort,
+		table:   t,
+		mode:    modeNormal,
+		sort:    sortByPort,
+		version: version,
 	}
 	m.resizeColumns(60)
 	return m
@@ -116,7 +121,11 @@ func (m *Model) resizeColumns(tableWidth int) {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(fetchProcesses, tick())
+	cmds := []tea.Cmd{fetchProcesses, tick()}
+	if m.version != "dev" {
+		cmds = append(cmds, checkUpdateCmd(m.version))
+	}
+	return tea.Batch(cmds...)
 }
 
 func tick() tea.Cmd {

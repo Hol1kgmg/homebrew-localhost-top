@@ -100,6 +100,9 @@ func (m Model) View() string {
 
 	title := titleBarStyle.Render("● localhost-top") + "  " +
 		subtitleStyle.Render(fmt.Sprintf("%d processes", len(m.visible)))
+	if m.updateAvailable {
+		title += "  " + keyStyle.Render(fmt.Sprintf("🆕 %s 利用可能 (:update)", m.latestVersion))
+	}
 
 	borderColor := colorGreen
 	panelTitle := "Processes"
@@ -222,6 +225,7 @@ func (m Model) renderHelpPopup() string {
 		descStyle.Render("コマンド（:入力後）:"),
 		hint(":killall", "表示中の全プロセスをkill (SIGTERM)"),
 		hint(":killall!", "表示中の全プロセスを強制kill (SIGKILL)"),
+		hint(":update", "新バージョンの有無を確認"),
 		hint(":q", "終了"),
 		"",
 		descStyle.Render("esc / q / ? で閉じる"),
