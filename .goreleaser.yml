@@ -51,3 +51,9 @@ homebrew_casks:
       email: goreleaser@localhost
     binaries:
       - localhost-top
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-l", "#{staged_path}/localhost-top"]).stdout.include? "com.apple.quarantine"
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/localhost-top"]
+          end
