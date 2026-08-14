@@ -10,3 +10,47 @@ run = [
   "mise install",
   "lefthook install",
 ]
+
+[tasks.release]
+description = "Tag a release (vX.X.X) and push it to trigger the GitHub Actions release workflow"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ -z "${1:-}" ]; then
+  echo "Usage: mise run release <version>  (例: mise run release 0.1.4)" >&2
+  exit 1
+fi
+
+TAG="v${1#v}"
+if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Error: version must be X.X.X形式で指定してください (got: $1)" >&2
+  exit 1
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Error: working treeにコミットされていない変更があります。先にcommit/stashしてください。" >&2
+  exit 1
+fi
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" != "main" ]; then
+  echo "Warning: mainブランチではありません (現在: $branch)" >&2
+fi
+
+if git rev-parse "$TAG" >/dev/null 2>&1; then
+  echo "Error: タグ $TAG は既に存在します。" >&2
+  exit 1
+fi
+
+git fetch origin main --quiet
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+  echo "Error: ローカルのmainがorigin/mainと一致していません。git pull/pushで同期してください。" >&2
+  exit 1
+fi
+
+git tag "$TAG"
+git push origin "$TAG"
+
+echo "タグ $TAG をpushしました。GitHub Actions (release workflow) がgoreleaserを実行します。"
+'''
