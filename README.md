@@ -4,6 +4,8 @@ vimキーバインドで操作する、localhost上のLISTENプロセス管理TU
 
 ![localhost-top screenshot](./src/screenshot.png)
 
+![localhost-top screenshot](./src/qrcode-screenshot.png)
+
 ## 特徴
 
 - `127.0.0.1` / `localhost`（loopback限定bind）、`0.0.0.0`（全インターフェース待受）でLISTENしているTCPプロセスを対象に表示、bind範囲は`SCOPE`列で確認可能
