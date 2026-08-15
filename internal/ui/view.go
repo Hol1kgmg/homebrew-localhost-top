@@ -228,7 +228,7 @@ func (m Model) renderSizeWarning(requiredWidth, requiredHeight int) string {
 	if wrapWidth < 1 {
 		wrapWidth = 1
 	}
-	content := lipgloss.NewStyle().Width(wrapWidth).Render(strings.Join(lines, "\n"))
+	content := lipgloss.NewStyle().Width(wrapWidth).Align(lipgloss.Center).Render(strings.Join(lines, "\n"))
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
