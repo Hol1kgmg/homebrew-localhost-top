@@ -22,6 +22,7 @@ const (
 	modeDetail
 	modeHelp
 	modeLANGuide
+	modeQRCode
 )
 
 type sortKey int
@@ -69,6 +70,7 @@ type Model struct {
 
 	detailContent   string
 	lanGuideContent string
+	qrCodeContent   string
 
 	status      string
 	statusToken int

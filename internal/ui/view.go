@@ -88,16 +88,22 @@ func hint(key, desc string) string {
 func (m Model) View() string {
 	switch m.mode {
 	case modeDetail:
-		box := popupStyle.Render(
-			panelTitleStyle.Render("プロセス詳細") + "\n\n" + m.detailContent,
-		)
-		return box + "\n" + descStyle.Render("esc/q で閉じる")
+		body := strings.Join([]string{
+			panelTitleStyle.Render("プロセス詳細"),
+			"",
+			m.detailContent,
+			"",
+			descStyle.Render("esc/q で閉じる"),
+		}, "\n")
+		return m.renderPopup(popupStyle, body)
 	case modeConfirmKill:
 		return m.renderConfirmPopup()
 	case modeHelp:
 		return m.renderHelpPopup()
 	case modeLANGuide:
 		return m.renderLANGuidePopup()
+	case modeQRCode:
+		return m.renderQRCodePopup()
 	}
 
 	title := titleBarStyle.Render("● localhost-top") + "  " +
@@ -188,6 +194,54 @@ func (m Model) renderBottom() string {
 	return strings.Join(lines, "\n")
 }
 
+// renderPopup はポップアップ本文をstyleでラップし、画面中央に配置する共通ヘルパー。
+// ターミナルサイズが本文の表示に不足している場合は、サイズ不足を案内するメッセージに差し替える。
+func (m Model) renderPopup(style lipgloss.Style, body string) string {
+	if m.width > 0 && m.height > 0 {
+		requiredWidth := lipgloss.Width(body) + style.GetHorizontalFrameSize()
+		requiredHeight := lipgloss.Height(body) + style.GetVerticalFrameSize()
+		if m.width < requiredWidth || m.height < requiredHeight {
+			return m.renderSizeWarning(requiredWidth, requiredHeight)
+		}
+	}
+
+	box := style.Render(body)
+	if m.width > 0 && m.height > 0 {
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
+	}
+	return box
+}
+
+// renderSizeWarning は表示エリア不足時の案内を、border/paddingを持たないプレーンな行として描画する。
+// popup用スタイルの余白を挟むと「帯の見た目の長さ」と「実際にターミナルへ必要な列数」がずれるため、
+// あえて枠なしにし、サンプル帯の文字数をrequiredWidth（枠込みで必要な列数）と一致させている。
+// この帯が折り返さず1本の帯として収まれば、ターミナル幅は足りている。
+func (m Model) renderSizeWarning(requiredWidth, requiredHeight int) string {
+	// QRコード本体で使われるBlock Elements文字（東アジア幅=Neutral、ほぼ全環境で半角）と
+	// 表示幅の判定基準を揃えるため、サンプル帯にも同じ文字種を使う。
+	// 「▪」(U+25AA、東アジア幅=Ambiguous)は環境によって全角描画されズレの原因になるため使わない。
+	sample := strings.Repeat("█", requiredWidth)
+
+	lines := []string{
+		panelTitleStyle.Render("⚠ 表示エリア不足"),
+		"",
+		descStyle.Render("下の帯が折り返さず1行に収まるまで"),
+		descStyle.Render("ターミナルを広げてください"),
+		sample,
+	}
+	if m.height < requiredHeight {
+		lines = append(lines, "", descStyle.Render(fmt.Sprintf("縦もあと%d行足りません", requiredHeight-m.height)))
+	}
+	lines = append(lines, "", descStyle.Render("esc/q で閉じる"))
+
+	wrapWidth := m.width
+	if wrapWidth < 1 {
+		wrapWidth = 1
+	}
+	content := lipgloss.NewStyle().Width(wrapWidth).Render(strings.Join(lines, "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
 // renderConfirmPopup はkill確認を画面中央のポップアップウィンドウとして描画する。
 func (m Model) renderConfirmPopup() string {
 	sig := "SIGTERM"
@@ -218,12 +272,7 @@ func (m Model) renderConfirmPopup() string {
 		}
 	}
 
-	popup := confirmPopupStyle.Render(strings.Join(lines, "\n"))
-
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, popup)
-	}
-	return popup
+	return m.renderPopup(confirmPopupStyle, strings.Join(lines, "\n"))
 }
 
 // lanGuideContent は127.0.0.1限定bindのプロセスに対し、0.0.0.0で
@@ -245,18 +294,25 @@ func lanGuideContent(pid int, command string) string {
 
 // renderLANGuidePopup はLANアクセス不可時の起動方法案内を画面中央のポップアップとして描画する。
 func (m Model) renderLANGuidePopup() string {
-	box := popupStyle.Render(strings.Join([]string{
+	body := strings.Join([]string{
 		panelTitleStyle.Render("⚠ LANアクセス不可"),
 		"",
 		m.lanGuideContent,
 		"",
 		descStyle.Render("esc/q で閉じる"),
-	}, "\n"))
+	}, "\n")
+	return m.renderPopup(popupStyle, body)
+}
 
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
-	}
-	return box
+// renderQRCodePopup はLANアクセス用URLのQRコードを画面中央のポップアップとして描画する。
+func (m Model) renderQRCodePopup() string {
+	body := strings.Join([]string{
+		panelTitleStyle.Render("LANアクセス用QRコード"),
+		"",
+		m.qrCodeContent,
+		descStyle.Render("esc/q で閉じる"),
+	}, "\n")
+	return m.renderPopup(popupStyle, body)
 }
 
 // renderHelpPopup はキーバインド・コマンド一覧を画面中央のポップアップとして描画する。
@@ -275,6 +331,7 @@ func (m Model) renderHelpPopup() string {
 		row(keys.Kill, "kill (SIGTERM)") + "  " + row(keys.Force, "強制kill (SIGKILL)"),
 		row(keys.Detail, "詳細表示") + "  " + row(keys.Open, "ブラウザで開く"),
 		row(keys.LANLink, "LANアクセス用リンクを取得（ローカル限定bindの場合は起動方法を案内）"),
+		row(keys.QRCode, "LANアクセス用リンクをQRコード表示"),
 		row(keys.Sort, "ソート切替") + "  " + row(keys.Reload, "再読み込み"),
 		row(keys.Command, "コマンドモード") + "  " + row(keys.Quit, "終了"),
 		"",
@@ -287,9 +344,5 @@ func (m Model) renderHelpPopup() string {
 		descStyle.Render("esc / q / ? で閉じる"),
 	}
 
-	box := popupStyle.Render(strings.Join(lines, "\n"))
-	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
-	}
-	return box
+	return m.renderPopup(popupStyle, strings.Join(lines, "\n"))
 }

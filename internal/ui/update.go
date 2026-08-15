@@ -1,11 +1,14 @@
 package ui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mdp/qrterminal/v3"
 
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/kill"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/network"
@@ -73,6 +76,23 @@ func lanLinkStatus(p process.Process) string {
 		return fmt.Sprintf("%s （クリップボードへのコピーに失敗: %v）", link, err)
 	}
 	return fmt.Sprintf("%s をクリップボードにコピーしました", link)
+}
+
+// buildQRCode はLANアクセス用URLのQRコードを生成し、URL文字列と併せて返す。
+// 呼び出し側でScopeAllであることを確認済みの前提。
+func buildQRCode(p process.Process) (string, error) {
+	ip, err := network.LocalIP()
+	if err != nil {
+		return "", fmt.Errorf("LAN側IPアドレスの取得に失敗しました: %w", err)
+	}
+
+	link := fmt.Sprintf("http://%s:%d", ip, p.Port)
+
+	var buf bytes.Buffer
+	qrterminal.GenerateHalfBlock(link, qrterminal.L, &buf)
+	qr := strings.TrimRight(buf.String(), "\n")
+
+	return link + "\n\n" + qr, nil
 }
 
 func detailCmd(pid int) tea.Cmd {
@@ -173,6 +193,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleHelpKey(msg)
 	case modeLANGuide:
 		return m.handleLANGuideKey(msg)
+	case modeQRCode:
+		return m.handleQRCodeKey(msg)
 	default:
 		return m.handleNormalKey(msg)
 	}
@@ -280,6 +302,20 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.mode = modeLANGuide
 			} else {
 				m.status = lanLinkStatus(p)
+			}
+		}
+		return m, nil
+
+	case "Q":
+		if p, ok := m.selected(); ok {
+			if p.Scope != process.ScopeAll {
+				m.lanGuideContent = lanGuideContent(p.PID, p.Command)
+				m.mode = modeLANGuide
+			} else if content, err := buildQRCode(p); err != nil {
+				m.status = err.Error()
+			} else {
+				m.qrCodeContent = content
+				m.mode = modeQRCode
 			}
 		}
 		return m, nil
@@ -406,6 +442,15 @@ func (m Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleLANGuideKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q":
+		m.mode = modeNormal
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m Model) handleQRCodeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
 		m.mode = modeNormal

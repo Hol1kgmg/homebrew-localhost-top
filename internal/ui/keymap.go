@@ -16,6 +16,7 @@ type keyMap struct {
 	Detail  key.Binding
 	Open    key.Binding
 	LANLink key.Binding
+	QRCode  key.Binding
 	Sort    key.Binding
 	Command key.Binding
 	Quit    key.Binding
@@ -38,6 +39,7 @@ var keys = keyMap{
 	Detail:  key.NewBinding(key.WithKeys("enter", "l")),
 	Open:    key.NewBinding(key.WithKeys("o")),
 	LANLink: key.NewBinding(key.WithKeys("L")),
+	QRCode:  key.NewBinding(key.WithKeys("Q")),
 	Sort:    key.NewBinding(key.WithKeys("s")),
 	Command: key.NewBinding(key.WithKeys(":")),
 	Quit:    key.NewBinding(key.WithKeys("q")),
