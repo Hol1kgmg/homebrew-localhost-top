@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mdp/qrterminal/v3"
 
+	"github.com/Hol1kgmg/homebrew-localhost-top/internal/i18n"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/kill"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/network"
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/open"
@@ -71,14 +72,14 @@ func killAllCmd(pids []int, force bool) tea.Cmd {
 func lanLinkStatus(p process.Process) string {
 	ip, err := network.LocalIP()
 	if err != nil {
-		return fmt.Sprintf("LAN側IPアドレスの取得に失敗しました: %v", err)
+		return fmt.Sprintf(i18n.T("lan_ip_fetch_failed_with_err"), err)
 	}
 
 	link := fmt.Sprintf("http://%s:%d", ip, p.Port)
 	if err := open.Copy(link); err != nil {
-		return fmt.Sprintf("%s （クリップボードへのコピーに失敗: %v）", link, err)
+		return fmt.Sprintf(i18n.T("clipboard_copy_failed"), link, err)
 	}
-	return fmt.Sprintf("%s をクリップボードにコピーしました", link)
+	return fmt.Sprintf(i18n.T("clipboard_copied"), link)
 }
 
 // buildQRCode はLANアクセス用URLのQRコードを生成し、URL文字列と併せて返す。
@@ -86,7 +87,7 @@ func lanLinkStatus(p process.Process) string {
 func buildQRCode(p process.Process) (string, error) {
 	ip, err := network.LocalIP()
 	if err != nil {
-		return "", fmt.Errorf("LAN側IPアドレスの取得に失敗しました: %w", err)
+		return "", fmt.Errorf(i18n.T("lan_ip_fetch_failed_with_err"), err)
 	}
 
 	link := fmt.Sprintf("http://%s:%d", ip, p.Port)
@@ -136,24 +137,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case killResultMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("kill失敗 (PID %d): %v", msg.pid, msg.err)
+			m.status = fmt.Sprintf(i18n.T("kill_failed"), msg.pid, msg.err)
 		} else {
-			m.status = fmt.Sprintf("PID %d を終了しました", msg.pid)
+			m.status = fmt.Sprintf(i18n.T("kill_succeeded"), msg.pid)
 		}
 		return m, fetchProcesses
 
 	case killAllResultMsg:
 		succeeded := msg.total - msg.failed
 		if msg.failed > 0 {
-			m.status = fmt.Sprintf("%d件中%d件を終了しました（%d件失敗）", msg.total, succeeded, msg.failed)
+			m.status = fmt.Sprintf(i18n.T("kill_all_result_partial"), msg.total, succeeded, msg.failed)
 		} else {
-			m.status = fmt.Sprintf("%d件を終了しました", succeeded)
+			m.status = fmt.Sprintf(i18n.T("kill_all_result_success"), succeeded)
 		}
 		return m, fetchProcesses
 
 	case detailMsg:
 		if msg.err != nil {
-			m.status = fmt.Sprintf("詳細取得失敗: %v", msg.err)
+			m.status = fmt.Sprintf(i18n.T("detail_fetch_failed"), msg.err)
 			m.mode = modeNormal
 			return m, nil
 		}
@@ -162,17 +163,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case updateCheckMsg:
 		if msg.err != nil {
-			if m.status == "アップデートを確認中..." {
-				m.status = fmt.Sprintf("アップデート確認に失敗しました: %v", msg.err)
+			if m.status == i18n.T("checking_update") {
+				m.status = fmt.Sprintf(i18n.T("update_check_failed"), msg.err)
 			}
 			return m, nil
 		}
 		if msg.info.Available {
 			m.updateAvailable = true
 			m.latestVersion = msg.info.Latest
-			m.status = fmt.Sprintf("新しいバージョン %s が利用可能です", msg.info.Latest)
-		} else if m.status == "アップデートを確認中..." {
-			m.status = "最新バージョンです"
+			m.status = fmt.Sprintf(i18n.T("new_version_available"), msg.info.Latest)
+		} else if m.status == i18n.T("checking_update") {
+			m.status = i18n.T("up_to_date")
 		}
 		return m, nil
 
@@ -229,7 +230,7 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.searchInput = ""
 			m.lastQuery = ""
 			m.applyFilterAndSort()
-			m.status = "検索フィルターを解除しました"
+			m.status = i18n.T("search_filter_cleared")
 		}
 		return m, nil
 
@@ -259,14 +260,14 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "r":
-		clearCmd := m.setStatus("再読み込み中...")
+		clearCmd := m.setStatus(i18n.T("reloading"))
 		return m, tea.Batch(fetchProcesses, clearCmd)
 
 	case "s":
 		m.sort = (m.sort + 1) % 3
 		m.refreshColumnTitles()
 		m.applyFilterAndSort()
-		m.status = fmt.Sprintf("ソート: %s", m.sort.String())
+		m.status = fmt.Sprintf(i18n.T("sort_label"), m.sort.String())
 		return m, nil
 
 	case "K":
@@ -284,7 +285,7 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "l":
 		if p, ok := m.selected(); ok {
 			m.mode = modeDetail
-			m.setDetailContent("読み込み中...")
+			m.setDetailContent(i18n.T("loading"))
 			return m, detailCmd(p.PID)
 		}
 		return m, nil
@@ -292,9 +293,9 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "o":
 		if p, ok := m.selected(); ok {
 			if err := open.Browser(p.Port); err != nil {
-				m.status = fmt.Sprintf("ブラウザで開けませんでした: %v", err)
+				m.status = fmt.Sprintf(i18n.T("browser_open_failed"), err)
 			} else {
-				m.status = fmt.Sprintf("http://localhost:%d を開きました", p.Port)
+				m.status = fmt.Sprintf(i18n.T("browser_opened"), p.Port)
 			}
 		}
 		return m, nil
@@ -373,7 +374,7 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "killall", "killall!":
 			if len(m.visible) == 0 {
-				m.status = "killするプロセスがありません"
+				m.status = i18n.T("no_processes_to_kill")
 				return m, nil
 			}
 			pids := make([]int, len(m.visible))
@@ -387,13 +388,13 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "update":
 			if m.version == "dev" {
-				m.status = "開発ビルドのためアップデート確認をスキップしました"
+				m.status = i18n.T("dev_build_skip_update")
 				return m, nil
 			}
-			m.status = "アップデートを確認中..."
+			m.status = i18n.T("checking_update")
 			return m, checkUpdateCmd(m.version)
 		}
-		m.status = fmt.Sprintf("不明なコマンド: %s", cmd)
+		m.status = fmt.Sprintf(i18n.T("unknown_command"), cmd)
 		return m, nil
 	case "esc":
 		m.mode = modeNormal
@@ -421,7 +422,7 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, killCmd(m.pendingPID, m.pendingForce)
 	case "n", "esc":
 		m.mode = modeNormal
-		m.status = "killをキャンセルしました"
+		m.status = i18n.T("kill_cancelled")
 		return m, nil
 	}
 	return m, nil

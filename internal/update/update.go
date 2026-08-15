@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Hol1kgmg/homebrew-localhost-top/internal/i18n"
 )
 
 const releasesURL = "https://api.github.com/repos/Hol1kgmg/homebrew-localhost-top/releases/latest"
@@ -40,7 +42,7 @@ func Check(ctx context.Context, current string) (Info, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return Info{}, fmt.Errorf("GitHub APIへのリクエストが失敗しました (status %d)", resp.StatusCode)
+		return Info{}, fmt.Errorf(i18n.T("github_api_request_failed"), resp.StatusCode)
 	}
 
 	var rel releaseResponse
@@ -85,12 +87,12 @@ func parseVersion(v string) ([3]int, error) {
 	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
 	parts := strings.SplitN(v, ".", 3)
 	if len(parts) != 3 {
-		return out, fmt.Errorf("不正なバージョン形式です: %q", v)
+		return out, fmt.Errorf(i18n.T("invalid_version_format"), v)
 	}
 	for i, p := range parts {
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			return out, fmt.Errorf("不正なバージョン形式です: %q", v)
+			return out, fmt.Errorf(i18n.T("invalid_version_format"), v)
 		}
 		out[i] = n
 	}

@@ -1,27 +1,29 @@
 # localhost-top
 
-vimキーバインドで操作する、localhost上のLISTENプロセス管理TUIツールです。`lsof`の結果をリアルタイムに一覧表示し、その場でプロセスをkillしたり、詳細を確認したり、ブラウザで開いたりできます。
+[日本語版はこちら](./README.ja.md)
+
+A TUI tool for managing LISTEN processes on localhost, operated with vim keybindings. It displays `lsof` results as a live-updating list, letting you kill processes, inspect details, or open them in a browser right from the terminal.
 
 ![localhost-top screenshot](./src/screenshot.png)
 
 ![localhost-top screenshot](./src/qrcode-screenshot.png)
 
-## 特徴
+## Features
 
-- `127.0.0.1` / `localhost`（loopback限定bind）、`0.0.0.0`（全インターフェース待受）でLISTENしているTCPプロセスを対象に表示、bind範囲は`SCOPE`列で確認可能
-- 全インターフェース待受（`0.0.0.0`）のプロセスは、同一LAN内の他デバイスからアクセス可能なリンクを取得してクリップボードにコピー可能
-- 2秒間隔で自動リロード
-- vimライクなキー操作
-- kill実行時は誤操作防止のための確認プロンプト付き
+- Lists TCP processes LISTENing on `127.0.0.1` / `localhost` (loopback-only bind) or `0.0.0.0` (all-interfaces bind); the bind range is shown in the `SCOPE` column
+- For processes bound to all interfaces (`0.0.0.0`), get a link reachable from other devices on the same LAN and copy it to the clipboard
+- Auto-reloads every 2 seconds
+- vim-like key operations
+- Confirmation prompt before kill to prevent accidental termination
 
-## インストール
+## Installation
 
 ```bash
 brew tap Hol1kgmg/localhost-top
 brew install --cask localhost-top
 ```
 
-### ソースからビルド
+### Build from source
 
 ```bash
 git clone https://github.com/Hol1kgmg/homebrew-localhost-top.git
@@ -29,60 +31,60 @@ cd homebrew-localhost-top
 go build -o localhost-top .
 ```
 
-## 使い方
+## Usage
 
 ```bash
 localhost-top
 ```
 
-### キーバインド
+### Keybindings
 
-| キー | 動作 |
+| Key | Action |
 |---|---|
-| `j` / `k` | 下移動 / 上移動 |
-| `gg` / `G` | 先頭 / 末尾へジャンプ |
-| `/` | 検索モード（コマンド名・ポート番号でフィルタ） |
-| `K` | 選択中プロセスをkill（SIGTERM、確認プロンプトあり） |
-| `X` | 強制kill（SIGKILL、確認プロンプトあり） |
-| `Enter` / `l` | 選択中プロセスの詳細表示（`lsof`フル出力） |
-| `o` | 選択中ポートをブラウザで開く（`http://localhost:PORT`） |
-| `L` | LANアクセス用リンクを取得しクリップボードにコピー（`0.0.0.0`bindのプロセスのみ。`127.0.0.1`限定bindの場合は警告のみ表示） |
-| `Q` | LANアクセス用リンクをQRコード表示（`0.0.0.0`bindのプロセスのみ。`127.0.0.1`限定bindの場合は警告のみ表示） |
-| `s` | ソート切り替え（PORT → PID → USER） |
-| `r` | リスト再読み込み |
-| `:` | コマンドモード（`:q`で終了） |
-| `q` | 終了 |
-| `?` | ヘルプ表示 |
+| `j` / `k` | Move down / up |
+| `gg` / `G` | Jump to top / bottom |
+| `/` | Search mode (filter by command name or port number) |
+| `K` | Kill the selected process (SIGTERM, with confirmation prompt) |
+| `X` | Force kill (SIGKILL, with confirmation prompt) |
+| `Enter` / `l` | Show details of the selected process (full `lsof` output) |
+| `o` | Open the selected port in a browser (`http://localhost:PORT`) |
+| `L` | Get a LAN access link and copy it to the clipboard (only for `0.0.0.0`-bound processes; shows a warning for `127.0.0.1`-only binds) |
+| `Q` | Show a QR code for the LAN access link (only for `0.0.0.0`-bound processes; shows a warning for `127.0.0.1`-only binds) |
+| `s` | Toggle sort order (PORT → PID → USER) |
+| `r` | Reload the list |
+| `:` | Command mode (`:q` to quit) |
+| `q` | Quit |
+| `?` | Show help |
 
-### コマンド（`:`入力後）
+### Commands (after typing `:`)
 
-| コマンド | 動作 |
+| Command | Action |
 |---|---|
-| `:q` | 終了 |
-| `:killall` | 表示中の全プロセスをkill（SIGTERM、確認プロンプトあり） |
-| `:killall!` | 表示中の全プロセスを強制kill（SIGKILL、確認プロンプトあり） |
-| `:update` | 新バージョンの有無を手動確認 |
+| `:q` | Quit |
+| `:killall` | Kill all visible processes (SIGTERM, with confirmation prompt) |
+| `:killall!` | Force kill all visible processes (SIGKILL, with confirmation prompt) |
+| `:update` | Manually check for a new version |
 
-`:killall` / `:killall!` は検索フィルタが有効な場合、フィルタ後に表示されているプロセスのみを対象とします。
+When a search filter is active, `:killall` / `:killall!` only target the processes currently shown after filtering.
 
-## アップデート
+## Updates
 
-起動時にGitHub Releasesの最新バージョンを自動チェックし、新しいバージョンがあればタイトルバーに通知します（ソースからビルドした場合は自動チェックをスキップします）。`:update`コマンドで手動チェックも可能です。
+On startup, the app automatically checks GitHub Releases for the latest version and notifies you in the title bar if a newer one is available (this check is skipped for source builds). You can also check manually with the `:update` command.
 
-アプリ自体はバイナリを書き換えず、通知のみを行います。実際の更新は以下のコマンドで行ってください。
+The app itself never rewrites its own binary — it only notifies you. To actually update, run:
 
 ```bash
 brew upgrade --cask localhost-top
 ```
 
-## 前提条件
+## Requirements
 
-- macOS（`lsof` / `open` / `pbcopy` コマンドに依存）
-- Go 1.21以上（ソースからビルドする場合）
+- macOS (depends on the `lsof` / `open` / `pbcopy` commands)
+- Go 1.21+ (only if building from source)
 
-## 開発環境のセットアップ
+## Development setup
 
-[mise](https://mise.jdx.dev/) がインストールされ、シェルに統合されていること。
+Requires [mise](https://mise.jdx.dev/) installed and integrated into your shell.
 
 macOS (Homebrew):
 
@@ -90,7 +92,7 @@ macOS (Homebrew):
 brew install mise
 ```
 
-シェル統合 (zsh):
+Shell integration (zsh):
 
 ```bash
 echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
@@ -101,33 +103,37 @@ source ~/.zshrc
 mise trust && mise run setup
 ```
 
-gitleaks / lefthook のインストールと Git フックの設定、Go / goreleaser のインストールが一括で行われます。
+This installs gitleaks / lefthook and sets up Git hooks, and installs Go / goreleaser, all in one step.
 
-### 動作確認
+### Running locally
 
 ```bash
 go run .
 ```
 
-### リリース
+### Releasing
 
-`v*.*.*`形式のタグをpushすると、GitHub Actions（`.github/workflows/release.yml`）が自動でgoreleaserを実行します。
+Pushing a tag in `v*.*.*` format triggers GitHub Actions (`.github/workflows/release.yml`) to automatically run goreleaser.
 
 ```bash
 git tag vX.X.X
 git push origin vX.X.X
 ```
 
-同一リポジトリの`Casks/`ディレクトリにHomebrew Caskが自動生成・コミットされます。
+The Homebrew Cask is automatically generated and committed to the `Casks/` directory in this same repository.
 
-### バージョン履歴の確認
+### Checking version history
 
 ```bash
 mise run versions
 ```
 
-これまでにリリースされたタグを新しい順に一覧表示します。
+Lists previously released tags, newest first.
 
-## ライセンス
+## Documentation
+
+- [Configuration file](./docs/CONFIG.md)
+
+## License
 
 [MIT](./LICENSE)

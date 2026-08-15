@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/Hol1kgmg/homebrew-localhost-top/internal/i18n"
 )
 
 // lazygit風カラーパレット。
@@ -102,7 +104,7 @@ func (m Model) View() string {
 	title := titleBarStyle.Render("● localhost-top") + "  " +
 		subtitleStyle.Render(fmt.Sprintf("%d processes", len(m.visible)))
 	if m.updateAvailable {
-		title += "  " + keyStyle.Render(fmt.Sprintf("🆕 %s 利用可能 (:update)", m.latestVersion))
+		title += "  " + keyStyle.Render(fmt.Sprintf(i18n.T("update_available_title"), m.latestVersion))
 	}
 
 	borderColor := colorGreen
@@ -141,9 +143,9 @@ func (m Model) tableOrEmptyView() string {
 	if len(m.visible) > 0 {
 		return m.table.View()
 	}
-	msg := "該当するプロセスがありません"
+	msg := i18n.T("no_matching_processes")
 	if m.lastQuery != "" {
-		msg = fmt.Sprintf("%q に一致するプロセスがありません", m.lastQuery)
+		msg = fmt.Sprintf(i18n.T("no_matching_processes_query"), m.lastQuery)
 	}
 	return descStyle.Render(msg)
 }
@@ -179,7 +181,7 @@ func (m Model) renderBottom() string {
 		lines = append([]string{statusOKStyle.Render(m.status)}, lines...)
 	}
 	if m.err != nil {
-		lines = append([]string{errorStyle.Render(fmt.Sprintf("エラー: %v", m.err))}, lines...)
+		lines = append([]string{errorStyle.Render(fmt.Sprintf(i18n.T("error_prefix"), m.err))}, lines...)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -213,16 +215,16 @@ func (m Model) renderSizeWarning(requiredWidth, requiredHeight int) string {
 	sample := strings.Repeat("█", requiredWidth)
 
 	lines := []string{
-		panelTitleStyle.Render("⚠ 表示エリア不足"),
+		panelTitleStyle.Render(i18n.T("size_warning_title")),
 		"",
-		descStyle.Render("下の帯が折り返さず1行に収まるまで"),
-		descStyle.Render("ターミナルを広げてください"),
+		descStyle.Render(i18n.T("size_warning_desc1")),
+		descStyle.Render(i18n.T("size_warning_desc2")),
 		sample,
 	}
 	if m.height < requiredHeight {
-		lines = append(lines, "", descStyle.Render(fmt.Sprintf("縦もあと%d行足りません", requiredHeight-m.height)))
+		lines = append(lines, "", descStyle.Render(fmt.Sprintf(i18n.T("size_warning_height"), requiredHeight-m.height)))
 	}
-	lines = append(lines, "", descStyle.Render("esc/q で閉じる"))
+	lines = append(lines, "", descStyle.Render(i18n.T("close_hint")))
 
 	wrapWidth := m.width
 	if wrapWidth < 1 {
@@ -241,9 +243,9 @@ func (m Model) renderDetailPopup() string {
 		bottom = total
 	}
 
-	title := panelTitleStyle.Render("プロセス詳細")
+	title := panelTitleStyle.Render(i18n.T("detail_title"))
 	if total > visible {
-		indicator := fmt.Sprintf("(%d/%d行)", bottom, total)
+		indicator := fmt.Sprintf(i18n.T("detail_indicator"), bottom, total)
 		if !m.detailViewport.AtTop() {
 			indicator += " ↑"
 		}
@@ -258,7 +260,7 @@ func (m Model) renderDetailPopup() string {
 		"",
 		m.detailViewport.View(),
 		"",
-		descStyle.Render("j/k 縦スクロール  h/l 横スクロール  esc/q で閉じる"),
+		descStyle.Render(i18n.T("detail_scroll_hint")),
 	}, "\n")
 	return m.renderPopup(popupStyle, body)
 }
@@ -273,23 +275,23 @@ func (m Model) renderConfirmPopup() string {
 	var lines []string
 	if m.pendingAll {
 		lines = []string{
-			confirmTitleStyle.Render(" ⚠ 全プロセスKill確認 "),
+			confirmTitleStyle.Render(i18n.T("confirm_all_title")),
 			"",
-			confirmLabelStyle.Render("対象  ") + "  " + fmt.Sprintf("%d件", len(m.pendingPIDs)),
+			confirmLabelStyle.Render(i18n.T("confirm_target_label")) + "  " + fmt.Sprintf(i18n.T("confirm_target_count"), len(m.pendingPIDs)),
 			confirmLabelStyle.Render("SIGNAL") + "  " + errorStyle.Render(sig),
 			"",
-			hint("y", "実行") + "  " + hint("n/esc", "キャンセル"),
+			hint("y", i18n.T("confirm_execute")) + "  " + hint("n/esc", i18n.T("confirm_cancel")),
 		}
 	} else {
 		lines = []string{
-			confirmTitleStyle.Render(" ⚠ Kill確認 "),
+			confirmTitleStyle.Render(i18n.T("confirm_title")),
 			"",
 			confirmLabelStyle.Render("COMMAND") + "  " + m.pendingCommand,
 			confirmLabelStyle.Render("PID    ") + "  " + strconv.Itoa(m.pendingPID),
 			confirmLabelStyle.Render("PORT   ") + "  " + strconv.Itoa(m.pendingPort),
 			confirmLabelStyle.Render("SIGNAL ") + "  " + errorStyle.Render(sig),
 			"",
-			hint("y", "実行") + "  " + hint("n/esc", "キャンセル"),
+			hint("y", i18n.T("confirm_execute")) + "  " + hint("n/esc", i18n.T("confirm_cancel")),
 		}
 	}
 
@@ -300,10 +302,10 @@ func (m Model) renderConfirmPopup() string {
 // bindし直すための代表的な起動オプション例を案内するポップアップ本文を返す。
 func lanGuideContent(pid int, command string) string {
 	lines := []string{
-		fmt.Sprintf("PID %d (%s) はローカル限定bindのためLANから到達できません。", pid, command),
-		"0.0.0.0で待受するオプションを付けて起動し直してください。",
+		fmt.Sprintf(i18n.T("lan_guide_unreachable"), pid, command),
+		i18n.T("lan_guide_rebind"),
 		"",
-		"代表的な起動例:",
+		i18n.T("lan_guide_examples_label"),
 		"  vite / react     --host 0.0.0.0",
 		"  next dev         -H 0.0.0.0",
 		"  rails server     -b 0.0.0.0",
@@ -316,11 +318,11 @@ func lanGuideContent(pid int, command string) string {
 // renderLANGuidePopup はLANアクセス不可時の起動方法案内を画面中央のポップアップとして描画する。
 func (m Model) renderLANGuidePopup() string {
 	body := strings.Join([]string{
-		panelTitleStyle.Render("⚠ LANアクセス不可"),
+		panelTitleStyle.Render(i18n.T("lan_guide_unreachable_title")),
 		"",
 		m.lanGuideContent,
 		"",
-		descStyle.Render("esc/q で閉じる"),
+		descStyle.Render(i18n.T("close_hint")),
 	}, "\n")
 	return m.renderPopup(popupStyle, body)
 }
@@ -328,10 +330,10 @@ func (m Model) renderLANGuidePopup() string {
 // renderQRCodePopup はLANアクセス用URLのQRコードを画面中央のポップアップとして描画する。
 func (m Model) renderQRCodePopup() string {
 	body := strings.Join([]string{
-		panelTitleStyle.Render("LANアクセス用QRコード"),
+		panelTitleStyle.Render(i18n.T("qr_title")),
 		"",
 		m.qrCodeContent,
-		descStyle.Render("esc/q で閉じる"),
+		descStyle.Render(i18n.T("close_hint")),
 	}, "\n")
 	return m.renderPopup(popupStyle, body)
 }
@@ -343,26 +345,26 @@ func (m Model) renderHelpPopup() string {
 	}
 
 	lines := []string{
-		panelTitleStyle.Render("ヘルプ"),
+		panelTitleStyle.Render(i18n.T("help_title")),
 		"",
-		row(keys.Down, "下移動") + "    " + row(keys.Up, "上移動"),
-		row(keys.Top, "先頭へジャンプ") + "  " + row(keys.Bottom, "末尾へジャンプ"),
-		row(keys.Search, "検索モード"),
-		hint("esc", "検索フィルターを解除"),
-		row(keys.Kill, "kill (SIGTERM)") + "  " + row(keys.Force, "強制kill (SIGKILL)"),
-		row(keys.Detail, "詳細表示（j/k縦・h/l横スクロール）") + "  " + row(keys.Open, "ブラウザで開く"),
-		row(keys.LANLink, "LANアクセス用リンクを取得"),
-		row(keys.QRCode, "LANアクセス用リンクをQRコード表示"),
-		row(keys.Sort, "ソート切替") + "  " + row(keys.Reload, "再読み込み"),
-		row(keys.Command, "コマンドモード") + "  " + row(keys.Quit, "終了"),
+		row(keys.Down, i18n.T("help_move_down")) + "    " + row(keys.Up, i18n.T("help_move_up")),
+		row(keys.Top, i18n.T("help_jump_top")) + "  " + row(keys.Bottom, i18n.T("help_jump_bottom")),
+		row(keys.Search, i18n.T("help_search_mode")),
+		hint("esc", i18n.T("help_clear_search")),
+		row(keys.Kill, i18n.T("help_kill")) + "  " + row(keys.Force, i18n.T("help_force_kill")),
+		row(keys.Detail, i18n.T("help_detail")) + "  " + row(keys.Open, i18n.T("help_open_browser")),
+		row(keys.LANLink, i18n.T("help_lan_link")),
+		row(keys.QRCode, i18n.T("help_lan_qr")),
+		row(keys.Sort, i18n.T("help_sort_toggle")) + "  " + row(keys.Reload, i18n.T("help_reload")),
+		row(keys.Command, i18n.T("help_command_mode")) + "  " + row(keys.Quit, i18n.T("help_quit")),
 		"",
-		descStyle.Render("コマンド（:入力後）:"),
-		hint(":killall", "表示中の全プロセスをkill (SIGTERM)"),
-		hint(":killall!", "表示中の全プロセスを強制kill (SIGKILL)"),
-		hint(":update", "新バージョンの有無を確認"),
-		hint(":q", "終了"),
+		descStyle.Render(i18n.T("help_command_section")),
+		hint(":killall", i18n.T("help_killall")),
+		hint(":killall!", i18n.T("help_killall_force")),
+		hint(":update", i18n.T("help_update_check")),
+		hint(":q", i18n.T("help_quit")),
 		"",
-		descStyle.Render("esc / q / ? で閉じる"),
+		descStyle.Render(i18n.T("help_close_hint")),
 	}
 
 	return m.renderPopup(popupStyle, strings.Join(lines, "\n"))

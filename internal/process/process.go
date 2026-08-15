@@ -1,5 +1,7 @@
 package process
 
+import "github.com/Hol1kgmg/homebrew-localhost-top/internal/i18n"
+
 // Scope はプロセスがどの範囲のインターフェースでLISTENしているかを表す。
 type Scope int
 
@@ -14,9 +16,9 @@ const (
 func (s Scope) String() string {
 	switch s {
 	case ScopeAll:
-		return "LAN公開 🌐"
+		return i18n.T("scope_lan_public")
 	default:
-		return "local限定"
+		return i18n.T("scope_local_only")
 	}
 }
 
