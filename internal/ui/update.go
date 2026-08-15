@@ -17,6 +17,9 @@ import (
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/update"
 )
 
+// detailHScrollStep はh/lキー1回あたりの詳細ポップアップの横スクロール量（列数）。
+const detailHScrollStep = 10
+
 type detailMsg struct {
 	content string
 	err     error
@@ -109,6 +112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// テーブルの高さはフッターの実行数（ステータス/エラーの有無で変動）に応じてView()側で都度計算する。
 		m.resizeColumns(msg.Width - 4) // パネルのボーダー・パディング分を差し引く
 		m.table.SetWidth(msg.Width - 4)
+		m.resizeDetailViewport()
 		return m, nil
 
 	case tickMsg:
@@ -153,7 +157,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mode = modeNormal
 			return m, nil
 		}
-		m.detailContent = msg.content
+		m.setDetailContent(msg.content)
 		return m, nil
 
 	case updateCheckMsg:
@@ -280,7 +284,7 @@ func (m Model) handleNormalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "l":
 		if p, ok := m.selected(); ok {
 			m.mode = modeDetail
-			m.detailContent = "読み込み中..."
+			m.setDetailContent("読み込み中...")
 			return m, detailCmd(p.PID)
 		}
 		return m, nil
@@ -427,6 +431,30 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
 		m.mode = modeNormal
+		return m, nil
+	case "j", "down":
+		m.detailViewport.LineDown(1)
+		return m, nil
+	case "k", "up":
+		m.detailViewport.LineUp(1)
+		return m, nil
+	case "h", "left":
+		m.detailViewport.ScrollLeft(detailHScrollStep)
+		return m, nil
+	case "l", "right":
+		m.detailViewport.ScrollRight(detailHScrollStep)
+		return m, nil
+	case "0":
+		m.detailViewport.SetXOffset(0)
+		return m, nil
+	case "$":
+		m.detailViewport.SetXOffset(1 << 30)
+		return m, nil
+	case "g":
+		m.detailViewport.GotoTop()
+		return m, nil
+	case "G":
+		m.detailViewport.GotoBottom()
 		return m, nil
 	}
 	return m, nil

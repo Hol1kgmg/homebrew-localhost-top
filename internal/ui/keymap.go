@@ -8,8 +8,6 @@ type keyMap struct {
 	Top     key.Binding
 	Bottom  key.Binding
 	Search  key.Binding
-	Next    key.Binding
-	Prev    key.Binding
 	Kill    key.Binding
 	Force   key.Binding
 	Reload  key.Binding
@@ -31,8 +29,6 @@ var keys = keyMap{
 	Top:     key.NewBinding(key.WithKeys("g")),
 	Bottom:  key.NewBinding(key.WithKeys("G")),
 	Search:  key.NewBinding(key.WithKeys("/")),
-	Next:    key.NewBinding(key.WithKeys("n")),
-	Prev:    key.NewBinding(key.WithKeys("N")),
 	Kill:    key.NewBinding(key.WithKeys("K")),
 	Force:   key.NewBinding(key.WithKeys("X")),
 	Reload:  key.NewBinding(key.WithKeys("r")),

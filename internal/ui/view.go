@@ -88,14 +88,7 @@ func hint(key, desc string) string {
 func (m Model) View() string {
 	switch m.mode {
 	case modeDetail:
-		body := strings.Join([]string{
-			panelTitleStyle.Render("プロセス詳細"),
-			"",
-			m.detailContent,
-			"",
-			descStyle.Render("esc/q で閉じる"),
-		}, "\n")
-		return m.renderPopup(popupStyle, body)
+		return m.renderDetailPopup()
 	case modeConfirmKill:
 		return m.renderConfirmPopup()
 	case modeHelp:
@@ -173,12 +166,9 @@ func (m Model) renderBottom() string {
 		hint("j/k", "move"),
 		hint("/", "search"),
 		hint("K", "kill"),
-		hint("X", "force-kill"),
 		hint("enter/l", "detail"),
 		hint("o", "open"),
-		hint("L", "LAN link"),
 		hint("s", "sort:"+m.sort.String()),
-		hint("r", "reload"),
 		hint(":", "cmd"),
 		hint("q", "quit"),
 		hint("?", "help"),
@@ -242,6 +232,37 @@ func (m Model) renderSizeWarning(requiredWidth, requiredHeight int) string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
+// renderDetailPopup はプロセス詳細（lsofフル出力）をスクロール可能なポップアップとして描画する。
+func (m Model) renderDetailPopup() string {
+	total := m.detailViewport.TotalLineCount()
+	visible := m.detailViewport.VisibleLineCount()
+	bottom := m.detailViewport.YOffset + visible
+	if bottom > total {
+		bottom = total
+	}
+
+	title := panelTitleStyle.Render("プロセス詳細")
+	if total > visible {
+		indicator := fmt.Sprintf("(%d/%d行)", bottom, total)
+		if !m.detailViewport.AtTop() {
+			indicator += " ↑"
+		}
+		if !m.detailViewport.AtBottom() {
+			indicator += " ↓"
+		}
+		title += "  " + descStyle.Render(indicator)
+	}
+
+	body := strings.Join([]string{
+		title,
+		"",
+		m.detailViewport.View(),
+		"",
+		descStyle.Render("j/k 縦スクロール  h/l 横スクロール  esc/q で閉じる"),
+	}, "\n")
+	return m.renderPopup(popupStyle, body)
+}
+
 // renderConfirmPopup はkill確認を画面中央のポップアップウィンドウとして描画する。
 func (m Model) renderConfirmPopup() string {
 	sig := "SIGTERM"
@@ -257,7 +278,7 @@ func (m Model) renderConfirmPopup() string {
 			confirmLabelStyle.Render("対象  ") + "  " + fmt.Sprintf("%d件", len(m.pendingPIDs)),
 			confirmLabelStyle.Render("SIGNAL") + "  " + errorStyle.Render(sig),
 			"",
-			descStyle.Render("y") + " で実行 / " + descStyle.Render("n, esc") + " でキャンセル",
+			hint("y", "実行") + "  " + hint("n/esc", "キャンセル"),
 		}
 	} else {
 		lines = []string{
@@ -268,7 +289,7 @@ func (m Model) renderConfirmPopup() string {
 			confirmLabelStyle.Render("PORT   ") + "  " + strconv.Itoa(m.pendingPort),
 			confirmLabelStyle.Render("SIGNAL ") + "  " + errorStyle.Render(sig),
 			"",
-			descStyle.Render("y") + " で実行 / " + descStyle.Render("n, esc") + " でキャンセル",
+			hint("y", "実行") + "  " + hint("n/esc", "キャンセル"),
 		}
 	}
 
@@ -326,11 +347,11 @@ func (m Model) renderHelpPopup() string {
 		"",
 		row(keys.Down, "下移動") + "    " + row(keys.Up, "上移動"),
 		row(keys.Top, "先頭へジャンプ") + "  " + row(keys.Bottom, "末尾へジャンプ"),
-		row(keys.Search, "検索モード") + "  " + row(keys.Next, "次の検索結果") + "  " + row(keys.Prev, "前の検索結果"),
+		row(keys.Search, "検索モード"),
 		hint("esc", "検索フィルターを解除"),
 		row(keys.Kill, "kill (SIGTERM)") + "  " + row(keys.Force, "強制kill (SIGKILL)"),
-		row(keys.Detail, "詳細表示") + "  " + row(keys.Open, "ブラウザで開く"),
-		row(keys.LANLink, "LANアクセス用リンクを取得（ローカル限定bindの場合は起動方法を案内）"),
+		row(keys.Detail, "詳細表示（j/k縦・h/l横スクロール）") + "  " + row(keys.Open, "ブラウザで開く"),
+		row(keys.LANLink, "LANアクセス用リンクを取得"),
 		row(keys.QRCode, "LANアクセス用リンクをQRコード表示"),
 		row(keys.Sort, "ソート切替") + "  " + row(keys.Reload, "再読み込み"),
 		row(keys.Command, "コマンドモード") + "  " + row(keys.Quit, "終了"),

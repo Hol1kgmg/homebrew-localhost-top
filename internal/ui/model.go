@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/Hol1kgmg/homebrew-localhost-top/internal/process"
@@ -68,7 +69,8 @@ type Model struct {
 	pendingAll     bool
 	pendingPIDs    []int
 
-	detailContent   string
+	detailViewport viewport.Model
+
 	lanGuideContent string
 	qrCodeContent   string
 
@@ -102,13 +104,43 @@ func New(version string) Model {
 	t.SetStyles(tableStyles())
 
 	m := Model{
-		table:   t,
-		mode:    modeNormal,
-		sort:    sortByPort,
-		version: version,
+		table:          t,
+		mode:           modeNormal,
+		sort:           sortByPort,
+		version:        version,
+		detailViewport: viewport.New(0, 0),
 	}
 	m.resizeColumns(60)
 	return m
+}
+
+// detailPopupMargin はターミナル端から詳細ポップアップまでの余白。
+const detailPopupMargin = 6
+
+// detailPopupChromeLines はポップアップ内でviewport以外が使う行数（タイトル+空行+空行+フッター）。
+const detailPopupChromeLines = 4
+
+// resizeDetailViewport はターミナルサイズに合わせて詳細ポップアップのviewportサイズを再計算する。
+func (m *Model) resizeDetailViewport() {
+	w := m.width - detailPopupMargin - popupStyle.GetHorizontalFrameSize()
+	if w < 20 {
+		w = 20
+	}
+	h := m.height - detailPopupMargin - popupStyle.GetVerticalFrameSize() - detailPopupChromeLines
+	if h < 3 {
+		h = 3
+	}
+	m.detailViewport.Width = w
+	m.detailViewport.Height = h
+}
+
+// setDetailContent は詳細ポップアップの本文をセットし、スクロール位置を先頭に戻す。
+// lsofの列整列を保つため折り返しは行わず、viewport幅を超える行は横スクロールで参照する。
+func (m *Model) setDetailContent(raw string) {
+	m.resizeDetailViewport()
+	m.detailViewport.SetContent(raw)
+	m.detailViewport.GotoTop()
+	m.detailViewport.SetXOffset(0)
 }
 
 // resizeColumns はターミナル幅に合わせてCOMMAND列の幅を再計算する。
