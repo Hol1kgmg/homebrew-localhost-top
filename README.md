@@ -4,9 +4,9 @@
 
 A TUI tool for managing LISTEN processes on localhost, operated with vim keybindings. It displays `lsof` results as a live-updating list, letting you kill processes, inspect details, or open them in a browser right from the terminal.
 
-![localhost-top screenshot](./src/screenshot.png)
+![localhost-top screenshot](./docs/images/screenshot.png)
 
-![localhost-top screenshot](./src/qrcode-screenshot.png)
+![localhost-top screenshot](./docs/images/qrcode-screenshot.png)
 
 ## Features
 

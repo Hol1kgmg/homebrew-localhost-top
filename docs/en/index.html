@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>localhost-top</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <!--
+    Design memo (intro page)
+    Audience: frontend web developers (single or multiple local dev servers)
+    Core hook: localhost-top as the at-a-glance manager for "what's running on localhost"
+      (broader framing than just port-conflict resolution)
+    ja version: build after en is finalized
+
+    Sections, in order:
+      1. Hero + demo animation  [done]
+         - Types out the launch command (`localhost-top`), then the TUI view appears  [done]
+         - Background: plain Canvas mechanical effects (character-grid flicker,
+           scanlines, blinking cursor, Matrix-style falling characters),
+           respect prefers-reduced-motion  [done]
+         - Section reveal / hover transitions: Anime.js (docs/assets/js/anime.min.js)  [done for demo reveal]
+         - Scroll cue after demo completes + reveal-on-scroll for sections below
+           via IntersectionObserver (docs/assets/js/reveal.js)  [done]
+
+      2. Install  [done]
+         - Copyable command box (brew tap / brew install --cask)
+
+      3. Feature highlights (2 only — keep intro page lean)  [done]
+         - Port management: live list, auto-reload, kill confirmation
+         - LAN sharing: QR code for 0.0.0.0-bound processes
+
+      4. Footer  [done]
+         - Link to GitHub repo, license
+         - Link to docs page (../docs/) for full keybindings/commands/config reference
+         - Language switch (../ja/, once built)  [done]
+
+    Explicitly out of scope for this page (belongs in docs/en/docs/):
+      - Full keybindings table, command list, config file spec
+  -->
+
+  <!-- Markup for this section lives in assets/partials/hero-demo.html, loaded at runtime -->
+  <section class="hero" id="hero-demo"></section>
+
+  <header class="site-header">
+    <a class="site-header-logo" href="#hero-demo">localhost-top</a>
+    <nav class="site-header-nav">
+      <a href="#install">Install</a>
+      <a href="#features">Features</a>
+      <a href="./docs/">Docs</a>
+      <a href="../ja/">日本語</a>
+    </nav>
+  </header>
+
+  <section class="reveal-section" id="install">
+    <div class="install-content" data-reveal>
+      <h2>Install</h2>
+      <div class="install-box">
+        <div class="install-row">
+          <code>brew tap Hol1kgmg/localhost-top</code>
+          <button type="button" class="copy-btn" data-copy="brew tap Hol1kgmg/localhost-top">Copy</button>
+        </div>
+        <div class="install-row">
+          <code>brew install --cask localhost-top</code>
+          <button type="button" class="copy-btn" data-copy="brew install --cask localhost-top">Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal-section" id="features">
+    <div class="features-content" data-reveal>
+      <h2>Features</h2>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3>Port management</h3>
+          <img src="../images/screenshot.png" alt="localhost-top live process list" loading="lazy">
+          <p>See every process LISTENing on localhost in a live-updating list, auto-reloaded every 2 seconds, with a confirmation prompt before you kill anything.</p>
+        </article>
+        <article class="feature-card">
+          <h3>LAN sharing</h3>
+          <img src="../images/qrcode-screenshot.png" alt="localhost-top LAN QR code sharing" loading="lazy">
+          <p>For processes bound to <code>0.0.0.0</code>, get a QR code and shareable link so anyone on the same LAN can open it instantly.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <footer class="reveal-section" id="site-footer">
+    <div class="footer-content" data-reveal>
+      <p>
+        <a href="https://github.com/Hol1kgmg/homebrew-localhost-top">GitHub</a>
+        · <a href="https://github.com/Hol1kgmg/homebrew-localhost-top/blob/main/LICENSE">MIT License</a>
+        · <a href="./docs/">Docs</a>
+      </p>
+      <p><a href="../ja/">日本語</a></p>
+    </div>
+  </footer>
+
+  <script src="../assets/js/anime.min.js"></script>
+  <script src="../assets/js/partial-loader.js"></script>
+  <script src="../assets/js/hero-canvas.js"></script>
+  <script src="../assets/js/demo.js"></script>
+  <script src="../assets/js/reveal.js"></script>
+  <script src="../assets/js/install.js"></script>
+  <script>
+    loadPartial("#hero-demo", "../assets/partials/hero-demo.html").then(function () {
+      window.initHeroDemo();
+    });
+  </script>
+</body>
+</html>

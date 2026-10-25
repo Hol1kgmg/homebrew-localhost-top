@@ -1,0 +1,74 @@
+<div class="hero-stage">
+<div id="demo-prompt-pane" class="demo-prompt-pane">
+  <span id="demo-typed"></span><span id="demo-enter" class="demo-enter" hidden>&crarr;</span><span id="demo-cursor" class="demo-cursor">&nbsp;</span>
+</div>
+
+<div id="demo-terminal" class="terminal-window" hidden>
+  <div class="terminal-titlebar">
+    <span class="titlebar-dot"></span>
+    <span class="titlebar-name">localhost-top</span>
+    <span class="titlebar-meta">demo</span>
+  </div>
+
+  <div class="terminal-body">
+    <div id="demo-tui-pane" class="demo-tui-pane">
+      <p class="tui-heading">Processes</p>
+      <table class="tui-table">
+        <thead>
+          <tr>
+            <th>COMMAND</th>
+            <th>PID</th>
+            <th>USER</th>
+            <th>PORT</th>
+            <th>SCOPE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="is-selected">
+            <td>next</td>
+            <td>4821</td>
+            <td>mypc</td>
+            <td>3000</td>
+            <td>LAN public<span class="tui-scope-icon">&#9679;</span></td>
+          </tr>
+          <tr>
+            <td>vite</td>
+            <td>5190</td>
+            <td>mypc</td>
+            <td>5173</td>
+            <td>local only</td>
+          </tr>
+          <tr>
+            <td>webpack</td>
+            <td>3312</td>
+            <td>mypc</td>
+            <td>8080</td>
+            <td>LAN public<span class="tui-scope-icon">&#9679;</span></td>
+          </tr>
+          <tr>
+            <td>node</td>
+            <td>2210</td>
+            <td>mypc</td>
+            <td>4000</td>
+            <td>local only</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="tui-footer">
+        <span><kbd>j/k</kbd> move</span>
+        <span><kbd>/</kbd> search</span>
+        <span><kbd>K</kbd> kill</span>
+        <span><kbd>enter/l</kbd> detail</span>
+        <span><kbd>o</kbd> open</span>
+        <span><kbd>L</kbd> LAN link</span>
+        <span><kbd>q</kbd> quit</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="demo-scroll-cue" class="demo-scroll-cue" hidden aria-hidden="true">
+  <svg class="demo-scroll-cue-arrow" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm45.66-109.66a8,8,0,0,1,0,11.32l-40,40a8,8,0,0,1-11.32,0l-40-40a8,8,0,0,1,11.32-11.32L128,140.69l34.34-34.35A8,8,0,0,1,173.66,106.34Z"></path></svg>
+</div>
+</div>

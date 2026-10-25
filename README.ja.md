@@ -4,9 +4,9 @@
 
 vimキーバインドで操作する、localhost上のLISTENプロセス管理TUIツールです。`lsof`の結果をリアルタイムに一覧表示し、その場でプロセスをkillしたり、詳細を確認したり、ブラウザで開いたりできます。
 
-![localhost-top screenshot](./src/screenshot_ja.png)
+![localhost-top screenshot](./docs/images/screenshot_ja.png)
 
-![localhost-top screenshot](./src/qrcode-screenshot_ja.png)
+![localhost-top screenshot](./docs/images/qrcode-screenshot_ja.png)
 
 ## 特徴
 

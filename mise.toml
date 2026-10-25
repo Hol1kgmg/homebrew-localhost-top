@@ -3,6 +3,7 @@ gitleaks = "latest"
 lefthook = "latest"
 go = "latest"
 goreleaser = "latest"
+python = "latest"
 
 [tasks.setup]
 description = "Run full environment setup"
@@ -14,6 +15,10 @@ run = [
 [tasks.dev]
 description = "Run app"
 run = ["go run ."]
+
+[tasks."docs:dev"]
+description = "Serve docs/ locally for previewing the landing page (fetch-based partials need http, not file://)"
+run = ["python3 -m http.server 8791 --directory docs"]
 
 [tasks.versions]
 description = "Show release version history (git tags)"
